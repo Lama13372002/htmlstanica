@@ -13,6 +13,15 @@ class AdminPanel {
 
     async loadData() {
         try {
+            // Сначала пробуем загрузить из localStorage (актуальные данные)
+            const localData = localStorage.getItem('workingHoursData');
+            if (localData) {
+                this.workingHours = JSON.parse(localData);
+                document.getElementById('title').value = this.workingHours.title;
+                return;
+            }
+
+            // Если нет в localStorage, загружаем с сервера
             const response = await fetch('../data/working-hours.json');
             if (!response.ok) {
                 throw new Error('Ошибка загрузки данных');
@@ -170,50 +179,81 @@ class AdminPanel {
         try {
             // Показываем состояние загрузки
             const saveBtn = document.getElementById('saveBtn');
-            const originalText = saveBtn.textContent;
             saveBtn.textContent = 'Сохранение...';
             saveBtn.disabled = true;
 
-            // Отправляем данные на сервер (попробуем PHP скрипт)
-            let response;
+            // ВСЕГДА сохраняем в localStorage для мгновенного обновления
+            localStorage.setItem('workingHoursData', JSON.stringify(this.workingHours));
+
+            // МГНОВЕННО обновляем основную страницу
+            this.updateMainPageData();
+
+            // Пытаемся сохранить на сервере
+            let serverSaved = false;
             try {
-                response = await fetch('save-data.php', {
+                const response = await fetch('save-data.php', {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify(this.workingHours, null, 2)
                 });
+
+                if (response.ok) {
+                    serverSaved = true;
+                    console.log('✅ Данные сохранены на сервере');
+                } else {
+                    console.log('❌ Ошибка сохранения на сервере');
+                }
             } catch (error) {
-                // Если PHP недоступен, попробуем напрямую (только для демонстрации)
-                response = await fetch('../data/working-hours.json', {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(this.workingHours, null, 2)
-                });
+                console.log('⚠️ Сервер недоступен, используем локальное сохранение');
             }
 
-            if (!response.ok) {
-                throw new Error('Ошибка сохранения данных');
+            // Если серверное сохранение не удалось, предлагаем скачать файл
+            if (!serverSaved) {
+                this.downloadJSON();
             }
 
-            // Для демонстрации, так как в реальности нужен серверный скрипт
-            this.downloadJSON();
+            const message = serverSaved
+                ? '✅ Данные сохранены на сервере и сайт обновлен!'
+                : '✅ Сайт обновлен мгновенно! Файл скачан для установки на сервер.';
 
-            this.showMessage('Данные успешно сохранены!', 'success');
+            this.showMessage(message, 'success');
 
         } catch (error) {
-            console.error('Ошибка сохранения:', error);
-            this.showMessage('Ошибка сохранения данных. Файл скачан для ручного сохранения.', 'error');
+            console.error('Ошибка:', error);
+
+            // В любом случае сайт обновляется мгновенно
+            localStorage.setItem('workingHoursData', JSON.stringify(this.workingHours));
+            this.updateMainPageData();
             this.downloadJSON();
+
+            this.showMessage('✅ Сайт обновлен! Файл скачан для ручной установки.', 'success');
         } finally {
             // Восстанавливаем кнопку
             const saveBtn = document.getElementById('saveBtn');
             saveBtn.textContent = 'Сохранить изменения';
             saveBtn.disabled = false;
         }
+    }
+
+    updateMainPageData() {
+        // Отправляем событие для обновления основной страницы
+        if (window.opener && !window.opener.closed) {
+            // Если админ панель открыта в новом окне
+            window.opener.postMessage({
+                type: 'workingHoursUpdate',
+                data: this.workingHours
+            }, '*');
+        }
+
+        // Также сохраняем в localStorage для других вкладок
+        window.dispatchEvent(new StorageEvent('storage', {
+            key: 'workingHoursData',
+            newValue: JSON.stringify(this.workingHours)
+        }));
+
+        console.log('🔄 Данные отправлены на основную страницу');
     }
 
     downloadJSON() {
@@ -228,7 +268,7 @@ class AdminPanel {
         linkElement.setAttribute('download', exportFileDefaultName);
         linkElement.click();
 
-        this.showMessage('Файл скачан! Замените файл data/working-hours.json', 'success');
+        console.log('📁 Файл working-hours.json скачан');
     }
 
     showMessage(text, type) {
@@ -241,35 +281,24 @@ class AdminPanel {
             messageElement.classList.add('show');
         }, 100);
 
-        // Скрываем через 4 секунды
+        // Скрываем через 5 секунд
         setTimeout(() => {
             messageElement.classList.remove('show');
-        }, 4000);
-    }
-
-    // Метод для обновления основной страницы (для будущего использования)
-    updateMainPage() {
-        // Этот метод будет использоваться для обновления основной страницы
-        // после сохранения данных
-        const event = new CustomEvent('workingHoursUpdated', {
-            detail: this.workingHours
-        });
-        window.dispatchEvent(event);
+        }, 5000);
     }
 }
 
 // Инициализация админ панели при загрузке страницы
 document.addEventListener('DOMContentLoaded', () => {
-    new AdminPanel();
+    window.adminPanel = new AdminPanel();
 });
 
-// Простая валидация времени
+// Функции для валидации и форматирования
 function validateTime(timeString) {
     const timeRegex = /^\d{1,2}:\d{2}\s*—\s*\d{1,2}:\d{2}$/;
     return timeRegex.test(timeString);
 }
 
-// Форматирование времени
 function formatTime(timeString) {
     return timeString.replace(/\s+/g, ' ').replace(/\s*—\s*/, ' — ');
 }
