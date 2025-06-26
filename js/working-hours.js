@@ -2,6 +2,7 @@ class WorkingHoursDisplay {
     constructor() {
         this.workingHours = null;
         this.init();
+        this.setupAutoUpdate();
     }
 
     async init() {
@@ -11,16 +12,87 @@ class WorkingHoursDisplay {
 
     async loadData() {
         try {
+            // Сначала проверяем localStorage (мгновенные обновления из админки)
+            const localData = localStorage.getItem('workingHoursData');
+            if (localData) {
+                this.workingHours = JSON.parse(localData);
+                console.log('🔄 Загружены данные из localStorage (обновлено из админки)');
+                return;
+            }
+
+            // Если нет в localStorage, загружаем с сервера
             const response = await fetch('data/working-hours.json');
             if (!response.ok) {
                 throw new Error('Ошибка загрузки данных рабочих часов');
             }
             this.workingHours = await response.json();
+            console.log('📡 Загружены данные с сервера');
         } catch (error) {
             console.error('Ошибка загрузки данных рабочих часов:', error);
             // Используем дефолтные данные если файл не загрузился
             this.workingHours = this.getDefaultData();
         }
+    }
+
+    setupAutoUpdate() {
+        // Слушаем изменения localStorage (для обновлений из админки)
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'workingHoursData' && e.newValue) {
+                console.log('🔄 Получено обновление из админ панели');
+                this.workingHours = JSON.parse(e.newValue);
+                this.updateDisplay();
+                this.showUpdateNotification();
+            }
+        });
+
+        // Слушаем сообщения от админ панели (если она в новом окне)
+        window.addEventListener('message', (e) => {
+            if (e.data.type === 'workingHoursUpdate') {
+                console.log('🔄 Получено обновление от админ панели');
+                this.workingHours = e.data.data;
+                this.updateDisplay();
+                this.showUpdateNotification();
+            }
+        });
+    }
+
+    showUpdateNotification() {
+        // Показываем небольшое уведомление об обновлении
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, rgb(34, 197, 94) 0%, rgb(22, 163, 74) 100%);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            font-weight: 500;
+            box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+            z-index: 10000;
+            transform: translateX(400px);
+            transition: all 0.3s ease;
+        `;
+        notification.textContent = '✅ Рабочие часы обновлены!';
+
+        document.body.appendChild(notification);
+
+        // Показываем
+        setTimeout(() => {
+            notification.style.transform = 'translateX(0)';
+        }, 100);
+
+        // Убираем через 3 секунды
+        setTimeout(() => {
+            notification.style.transform = 'translateX(400px)';
+            setTimeout(() => {
+                if (document.body.contains(notification)) {
+                    document.body.removeChild(notification);
+                }
+            }, 300);
+        }, 3000);
     }
 
     getDefaultData() {
