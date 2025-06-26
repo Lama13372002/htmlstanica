@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Админ панель - Управление рабочими часами</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+    <div class="admin-container">
+        <header class="admin-header">
+            <h1>Админ панель - Рабочие часы</h1>
+            <div class="admin-actions">
+                <button id="saveBtn" class="btn btn-primary">Сохранить изменения</button>
+                <a href="../index.html" class="btn btn-secondary">Вернуться на сайт</a>
+            </div>
+        </header>
+
+        <main class="admin-main">
+            <div class="card">
+                <div class="card-header">
+                    <h2>Настройка рабочих часов</h2>
+                    <p>Измените время работы и статусы для каждого дня недели</p>
+                </div>
+
+                <div class="card-body">
+                    <div class="form-group">
+                        <label for="title">Заголовок секции:</label>
+                        <input type="text" id="title" value="Working Hours" class="form-control">
+                    </div>
+
+                    <div class="days-container" id="daysContainer">
+                        <!-- Дни недели будут загружены через JavaScript -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="preview-card">
+                <h3>Предварительный просмотр</h3>
+                <div class="preview-content" id="previewContent">
+                    <!-- Предварительный просмотр -->
+                </div>
+            </div>
+        </main>
+
+        <div class="status-message" id="statusMessage"></div>
+    </div>
+
+    <script src="js/admin.js"></script>
+</body>
+</html>
