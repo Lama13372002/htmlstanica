@@ -14,7 +14,7 @@ $DATA_FILE = __DIR__ . '/working-hours.json';
 $API_KEY = 'A555018A876E816C1C37DBC84C425B8A'; // ОБЯЗАТЕЛЬНО поменяйте!
 $CACHE_TIME = 300; // Кеширование на 5 минут
 $ALLOWED_ORIGINS = [
-    'https://admin.yoursite.com',    // Домен админ панели
+    'https://adminpanel-iota-sage.vercel.app/',    // Домен админ панели
     'https://htmlstanica.vercel.app/',          // Домен основного сайта
     'http://localhost:3000',         // Для разработки
     'http://localhost:5173'          // Для разработки Vite
